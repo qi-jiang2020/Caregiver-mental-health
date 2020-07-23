@@ -1,3 +1,8 @@
+
+
+*text
+
+
 use "/Users/jiangqi/Desktop/papers/37_2020_HF_mh_and_ecd/1_data/1_caregiver1_moms_and_babies_only_done_23June2020.dta", clear
 
 *== goal: clean variables one by one 

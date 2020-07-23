@@ -1,19 +1,64 @@
+********************************************************************************
+*   Goal: explore the effects of maternal mental health problems               *
+*   Authors: Mommy Whisperers team                                             *
+*   Create date: July 23, 2020                                                 *
+********************************************************************************
+
+*======================   OUTLINE   ===========================================*
+*······················ 0 create personal directories ·························* 
+*                                                                              *
+*······················ 1 clean baseline data ·································*
+*                                                                              *
+*······················ 2 clean follow-up data ································*
+*                                                                              *
+*······················ 3 append two waves of data and clean up ···············*
+*                                                                              *
+*----------------------  start to analyze -------------------------------------*
+*                                                                              *
+*······················ 5                             ·························*
+*······················ 6                             ·························*
+*==============================================================================*
 
 
-*text
+* Section 0. create personal input and output routes
+
+/* note: everyone can difine your own directors like me, and define where you input 
+the data to Stata. And when you are on the Stata, run your own set of directories 
+*/
+
+*==0.1 Jiang Qi
+global datadir   "/Users/jiangqi/Desktop/papers/37_2020_HF_mh_and_ecd/1_data"
+global tablesdir "/Users/jiangqi/Desktop/papers/37_2020_HF_mh_and_ecd/3_tables"
+
+cd "/Users/jiangqi/Desktop/papers/37_2020_HF_mh_and_ecd/3_tables"
 
 
-use "/Users/jiangqi/Desktop/papers/37_2020_HF_mh_and_ecd/1_data/1_caregiver1_moms_and_babies_only_done_23June2020.dta", clear
+*==0.2 TBD
+*------------------------------------------------------------------------------*
 
-*== goal: clean variables one by one 
-*== author: Qi Jiang 
-*== create date: 18June2020
 
-********************eeding practice*********************************************
-/////
+*Section 1. clean baseline data
+
+//imput the date
+use "$datadir/0_baseline_hf_mom_only.dta", clear
+
+//drop pregnant women and keep the newborns
+keep if type==2
+
+//merge the child anemia data
+merge 1:1 Family_code using "/Users/jiangqi/Desktop/papers/34_2020_HF_mental_health_paper/1 codebook/Baseline V1/3.Data/Exam/BASE_EXAM_L2_1.dta"
+keep if _merge==3 //444 not merged (401 from using data, 43 from master data), 837 merged
+drop _merge
+
+merge 1:1 Family_code using "/Users/jiangqi/Desktop/papers/34_2020_HF_mental_health_paper/1 codebook/Baseline V1/3.Data/Exam/BASE_EXAM_HEAD_1.dta"
+keep if _merge==3 
+drop _merge
+
+*==1.1 feeding practice
+
+//correct two labels
 la var C1_2a "How soon after birth did the baby suckle at the breast for the first time?(hour)"
 la var C1_2b "How soon after birth did the baby suckle at the breast for the first time?(day)"
-//更正两个错误标签
 
 gen baby_Feeding = .
 order baby_Feeding, before(Family_code)
@@ -48,18 +93,6 @@ label values baby_Feeding Feeding
 codebook baby_Feeding
 tab baby_Feeding
 
-*========================== clean and merge ===================================*
-keep if type==2
-
-merge 1:1 Family_code using "/Users/jiangqi/Desktop/papers/34_2020_HF_mental_health_paper/1 codebook/Baseline V1/3.Data/Exam/BASE_EXAM_L2_1.dta"
-
-keep if _merge==3 //444 not merged (401 from using data, 43 from master data), 837 merged
-
-drop _merge
-
-merge 1:1 Family_code using "/Users/jiangqi/Desktop/papers/34_2020_HF_mental_health_paper/1 codebook/Baseline V1/3.Data/Exam/BASE_EXAM_HEAD_1.dta"
-keep if _merge==3 
-drop _merge
 
 *======================= clean control variables ==============================*
 *==1 child gender 

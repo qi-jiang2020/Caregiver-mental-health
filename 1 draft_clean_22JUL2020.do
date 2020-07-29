@@ -39,13 +39,13 @@ cd "/Users/jiangqi/Desktop/papers/37_2020_HF_mh_and_ecd/3_tables"
 
 *Section 1. clean baseline data
 
-//imput the date
+*imput the date
 use "$datadir/0_baseline_hf_mom_only.dta", clear
 
-//drop pregnant women and keep the newborns
+*drop pregnant women and keep the newborns
 keep if type==2
 
-//merge the child anemia data
+*merge the child anemia data
 merge 1:1 Family_code using "/Users/jiangqi/Desktop/papers/34_2020_HF_mental_health_paper/1 codebook/Baseline V1/3.Data/Exam/BASE_EXAM_L2_1.dta"
 keep if _merge==3 //444 not merged (401 from using data, 43 from master data), 837 merged
 drop _merge
@@ -54,47 +54,11 @@ merge 1:1 Family_code using "/Users/jiangqi/Desktop/papers/34_2020_HF_mental_hea
 keep if _merge==3 
 drop _merge
 
-*==1.1 feeding practice
 
-//correct two labels
-la var C1_2a "How soon after birth did the baby suckle at the breast for the first time?(hour)"
-la var C1_2b "How soon after birth did the baby suckle at the breast for the first time?(day)"
+***********************
+*--Control Variables--*
+***********************
 
-gen baby_Feeding = .
-order baby_Feeding, before(Family_code)
-codebook C1_1
-*br if C1_1 == 2
-replace C1_1 = 1 in 418 //更正一个错填为人工喂养的个案
-replace baby_Feeding = 3 if C1_1 ==2
-codebook baby_Feeding //共有49个人工喂养的个案
-
-codebook C1_8 C1_10 C1_11 C1_17 C1_19 C1_20 C1_21 C1_22 C1_23 C1_24 C1_25
-*br if C1_25 == 999
-   replace C1_25 = 888 in 324
-   replace C1_25 = 888 in 49 //更正两个错填辅食添加的个案
-
- replace C1_11 = 2 in 47
- replace C1_11 = 2 in 136
- replace C1_11 = 2 in 577
- replace C1_11 = 1 in 268
- replace C1_11 = 1 in 208
- replace C1_19 = 2 in 329
- replace C1_20 = 2 in 804 //更正喂养方式判断中的逻辑问题
- replace C1_8 = 1 in 136
- replace C1_10 = 2 in 136 //对于_n=136个案，将“母亲不知道昨天喂的食物”私自改入“母乳喂养组”
-
-replace baby_Feeding = 2 if (C1_1 == 1 & C1_8 == 1 & C1_10 == 2 & C1_11 == 2 & C1_17 == 2 & C1_19 == 2 & C1_20 == 2 & C1_21 == 2 & C1_22 == 2 & C1_23 == 2 & C1_24 == 2 & C1_25 == 888)
-replace baby_Feeding = 1 if (C1_1 == 1 & (C1_8 == 2 | C1_10 == 1 | C1_11 == 1 | C1_17 == 1 | C1_19 == 1 | C1_20 == 1 | C1_21 == 1 | C1_22 == 1 | C1_23 == 1 | C1_24 == 1 | C1_25 != 888))
-count if baby_Feeding == 0
-*br if baby_Feeding == 0
-
-label define Feeding 1 "breastfeeding" 2 "exclusive breastfeeding" 3 "non-breastfeeding"
-label values baby_Feeding Feeding
-codebook baby_Feeding
-tab baby_Feeding
-
-
-*======================= clean control variables ==============================*
 *==1 child gender 
 tab B1_6,m
 recode B1_6 (2=0)
@@ -105,8 +69,6 @@ label var child_male "baby male (1=yes)"
 tab child_male,m
 
 *==2 child age 
-
-/////baby age
 
 *出生日期的清理
 codebook B1_1	
@@ -178,46 +140,7 @@ drop baby_AGE_m //得到了没有缺失值的baby_AGE
 sum baby_AGE,detail
 tabulate baby_AGE
 
-/*
-*=2.1 generate the investage date
 
-gen inv_date_year=substr(Inv_date,1,4)
-gen inv_date_mon=substr(Inv_date,6,2)
-gen inv_date_day=substr(Inv_date,9,2)
-gen inv_date=inv_date_year+inv_date_mon+inv_date_day
-tab inv_date,m
-
-drop if B1_1 ==201906010|B1_1 ==202191208 // clean abnormal values
- 
-*=2.2 formate the investage date
-tab inv_date,m
-gen inv_datee = date(inv_date, "YMD")
-format inv_datee %dCY_N_D
-
-*=2.3 formate the birth date
-tostring B1_1,replace
-gen birth_date=date(B1_1, "YMD")
-format birth_date %dCY_N_D
-tab birth_date,m
-
-*=2.4 generate the child age in days
-gen child_age=inv_datee-birth_date
-tab child_age,m
-
-/*
-*=2.5 generate the child age in months
-replace child_age = child_age/30
-tab child_age,m
-
-*=2.6 clean abnormal data
-replace child_age=. if child_age>100
-
-*=2.7 generate dummy - whether the age of children is above the mean
-codebook child_age //m=1.85
-gen child_age_ave=0
-replace child_age_ave=1 if child_age>=1.85
-*/
-*/
 *==3 premature
 tab E1_4,m
 
@@ -286,18 +209,6 @@ tab dad_hs_grad,m
 label var dad_hs_grad "does dad graduate from high school(1=yes)"
 
 
-*==10 father migration status
-tab B1_11,m
-
-gen dad_at_home=.
-replace dad_at_home=1 if B1_11==1
-replace dad_at_home=0 if B1_11==2
-
-label var dad_at_home "father_migrants(1=yes)"
-tab dad_at_home,m
-
-
-
 *==11 family asset index
 *=11.1 抽水马桶
 gen choushui = .
@@ -315,107 +226,13 @@ polychoricpca B1_15-B1_23 choushui, score(asset_index) nscore(1)
 
 rename asset_index1 family_asset
 
+*****************************
+*--Caregiver mental health--*
+*****************************
 
-*==12 whether mom is from the village
-gen mom_village =.
+*==1 DASS 
 
-replace mom_village = 1 if B2_1 == 1
-replace mom_village = 0 if B2_1 == 2
-
-label var mom_village "is mom from the village(1=yes)"
-
-*==13 have mother migranted before?
-gen mom_migrant_b =.
-
-replace mom_migrant_b = 1 if B2_2==1
-replace mom_migrant_b = 0 if B2_2==2
-
-label var mom_migrant_b "has mom migranted before(1=yes)"
-
-*==14 does mother plan to migrant?
-gen mom_migrant_a=.
-
-replace mom_migrant_a=1 if B2_6==1
-replace mom_migrant_a=0 if B2_6==2|B2_6==3
-
-label var mom_migrant_a "does mom plan to migrant(1=yes)"
-
-*==15 number of illness
-
-foreach num of numlist 1(1)15 {
-	gen ill_`num'=0
-	replace ill_`num' =1 if E2_`num' == 1
-	}
-
-egen illness=rowtotal(ill_1-ill_15)
-tab illness,m
-
-label var illness "number of illness"
-
-drop ill_1-ill_15
-
-gen illness_yes = .
-replace illness_yes = 0 if illness ==0
-replace illness_yes = 1 if illness >0 & illness<999
-
-label var illness "does the child have illness? 1=yes"
-
-gen illness_twice=.
-replace illness_twice = 0 if illness<2
-replace illness_twice = 1 if illness>=2 & illness<999
-label var illness_twice "has the child been ill at least twice?1=yes"
-
-
-*==16 number of doctor visits for illness symptoms
-tab E2_16,m
- 
-gen visit_dr=E2_16
-replace visit_dr=. if visit_dr>100
-replace visit_dr=0 if illness==0
-
-tab visit_dr,m //300+ missing values, need to be checked
-
-
-gen visit_dr_yes=.
-replace visit_dr_yes=1 if visit_dr>0 & visit_dr<999
-replace visit_dr_yes=0 if visit_dr==0
-
-label var visit_dr_yes "did the child visit doctor? 1=yes"
-
-*==19 delivery method
-tab E1_5,m
-
-gen is_shunchan =.
-replace is_shunchan=1 if E1_5==1 | E1_5==2
-replace is_shunchan=0 if E1_5==3
-
-tab is_shunchan,m
-
-label var is_shunchan "vaginal birth (natural or assisted)(1=yes)"
-
-*==20 first pregnancy
-tab F7_1,m
-
-gen first_pregnancy=.
-replace first_pregnancy=1 if F7_1==0
-replace first_pregnancy=0 if F7_1>0 & F7_1<100
-
-
-*==21 previous miscarriage
-replace F7_2=0 if F7_1==0
-gen miscarriage=F7_1-F7_2
-tab miscarriage,m
-replace miscarriage=. if miscarriage==50
-replace miscarriage=. if miscarriage==-1
-
-gen miscarriage_yes=.
-replace miscarriage_yes=0 if miscarriage==0
-replace miscarriage_yes=1 if miscarriage>0 & miscarriage<999
-
-label var miscarriage "has mother miscarriage before? 1=yes"
-
-
-*======================= clean mental health variables ========================*
+*=1.1 clean variables one by one
 rename G1_1 S1
 rename G1_2 A2
 rename G1_3 D3
@@ -446,52 +263,162 @@ label var depression_score "Depression Score"
 label var anxiety_score "Anxiety Score"
 label var stress_score "Stress Score"
 
-*= dummy score
-gen depression_yes=.
-replace depression_yes=1 if depression_score>9 & depression_score<9999
-replace depression_yes=0 if depression_score<=9
-tab depression_yes,m
+*==1.2 generate mental health problem variables
+*=1.2.1 mild mental health problems
+gen depression_mild=.
+replace depression_mild=1 if depression_score>9 & depression_score<9999
+replace depression_mild=0 if depression_score<=9
+tab depression_mild,m
 
-gen anxiety_yes=.
-replace anxiety_yes=1 if anxiety_score>7 & anxiety_score<999
-replace anxiety_yes=0 if anxiety_score<=7
-tab anxiety_yes,m
+gen anxiety_mild=.
+replace anxiety_mild=1 if anxiety_score>7 & anxiety_score<999
+replace anxiety_mild=0 if anxiety_score<=7
+tab anxiety_mild,m
 
-gen stress_yes=.
-replace stress_yes=1 if stress_score>14 & stress_score<999
-replace stress_yes=0 if stress_score<=14
-tab stress_yes,m
+gen stress_mild=.
+replace stress_mild=1 if stress_score>14 & stress_score<999
+replace stress_mild=0 if stress_score<=14
+tab stress_mild,m
 
-gen any_yes = depression_yes==1 | anxiety_yes==1 | stress_yes==1
+gen any_mild = depression_mild==1 | anxiety_mild==1 | stress_mild==1
+
+*=1.2.2 moderate mental health problems
+gen depression_moderate=.
+replace depression_moderate=1 if depression_score>13 & depression_score<9999
+replace depression_moderate=0 if depression_score<=13
+tab depression_moderate,m
+
+gen anxiety_moderate=.
+replace anxiety_moderate=1 if anxiety_score>9 & anxiety_score<999
+replace anxiety_moderate=0 if anxiety_score<=0
+tab anxiety_moderate,m
+
+gen stress_moderate=.
+replace stress_moderate=1 if stress_score>18 & stress_score<999
+replace stress_moderate=0 if stress_score<=18
+tab stress_moderate,m
+
+gen any_moderate = depression_moderate==1 | anxiety_moderate==1 | stress_moderate==1
 
 
-*======================= clean child-outcome variables ========================*
-*1. anemia
-/*
-*==1.1 drop the missing valules
-codebook Baby_1
+*==2.Edinburgh Postnatal Depression Scale
+egen perinatal_depression=rowtotal(G2_1-G2_10)
+tab perinatal_depression,m
 
-drop if Baby_1==2 //558 obs left
-drop if child_age<1.4
+gen ed_depression_mild=.
+replace ed_depression_mild=1 if perinatal_depression>=10 & perinatal_depression<999
+replace ed_depression_mild=0 if perinatal_depression<10
+tab ed_depression_mild,m //15.77%
 
-drop if child_age>7
+gen ed_depression_severe=.
+replace ed_depression_severe=1 if perinatal_depression>13 & perinatal_depression<999
+replace ed_depression_severe=0 if perinatal_depression<=13
+tab ed_depression_severe,m //5.85%
+
+************************
+*-- Feeding Practice --*
+************************
+
+*==1 clean variables
+*correct two labels
+la var C1_2a "How soon after birth did the baby suckle at the breast for the first time?(hour)"
+la var C1_2b "How soon after birth did the baby suckle at the breast for the first time?(day)"
+
+codebook C1_1
+*br if C1_1 == 2
+replace C1_1 = 1 if Family_code== 2100304 //replace C1_1 = 1 in 418 //更正一个错填为人工喂养的个案 
 
 
-*/
+codebook C1_8 C1_10 C1_11 C1_17 C1_19 C1_20 C1_21 C1_22 C1_23 C1_24 C1_25
+*br if C1_25 == 999
+   replace C1_25 = 888 if Family_code== 2030109 //replace C1_25 = 888 in 324
+   replace C1_25 = 888 if Family_code== 1030108 //replace C1_25 = 888 in 49 //更正两个错填辅食添加的个案
+
+ replace C1_11 = 2 if Family_code== 1030106 // replace C1_11 = 2 in 47
+ replace C1_11 = 2 if Family_code== 1090201 //replace C1_11 = 2 in 136
+ replace C1_11 = 2 if Family_code== 3010102 //replace C1_11 = 2 in 577
+ replace C1_11 = 1 if Family_code== 1190501 // replace C1_11 = 1 in 268
+ replace C1_11 = 1 if Family_code== 1130201 // replace C1_11 = 1 in 208
+ replace C1_19 = 2 if Family_code== 2030114 // replace C1_19 = 2 in 329
+ replace C1_20 = 2 if Family_code== 3190102 // replace C1_20 = 2 in 804 //更正喂养方式判断中的逻辑问题
+ replace C1_8 = 1 if Family_code== 1090201 // replace C1_8 = 1 in 136
+ replace C1_10 = 2 if Family_code== 1090201 // replace C1_10 = 2 in 136 //对于_n=136个案，将“母亲不知道昨天喂的食物”私自改入“母乳喂养组”
+
+*==2 gen breasfeeding styles
+gen baby_Feeding = .
+order baby_Feeding, before(Family_code)
+replace baby_Feeding = 3 if C1_1 ==2  // children never breastfed
+replace baby_Feeding = 2 if (C1_1 == 1 & C1_8 == 1 & C1_10 == 2 & C1_11 == 2 & C1_17 == 2 & C1_19 == 2 & C1_20 == 2 & C1_21 == 2 & C1_22 == 2 & C1_23 == 2 & C1_24 == 2 & C1_25 == 888)
+replace baby_Feeding = 1 if (C1_1 == 1 & (C1_8 == 2 | C1_10 == 1 | C1_11 == 1 | C1_17 == 1 | C1_19 == 1 | C1_20 == 1 | C1_21 == 1 | C1_22 == 1 | C1_23 == 1 | C1_24 == 1 | C1_25 != 888))
+
+label define Feeding 1 "breastfeeding" 2 "exclusive breastfeeding" 3 "non-breastfeeding"
+label values baby_Feeding Feeding
+codebook baby_Feeding
+tab baby_Feeding
+
+*==3. breastfeeding
+*=3.1 ever breastfeeding
+gen ever_bf=0
+replace ever_bf =1 if baby_Feeding==1
+tab ever_bf,m
+
+*=3.2 exclusive breastfeeding
+gen exclusive_bf=0
+replace exclusive_bf =1 if baby_Feeding==2
+tab exclusive_bf,m
+
+*=3.3 
+**********************
+*-- Child outcomes --*
+**********************
+
+*==1 number of illness
+
+foreach num of numlist 1(1)15 {
+	gen ill_`num'=0
+	replace ill_`num' =1 if E2_`num' == 1
+	}
+
+egen illness=rowtotal(ill_1-ill_15)
+tab illness,m
+
+label var illness "number of illness"
+
+drop ill_1-ill_15
+
+gen illness_yes = .
+replace illness_yes = 0 if illness ==0
+replace illness_yes = 1 if illness >0 & illness<999
+
+label var illness "does the child have illness? 1=yes"
+
+gen illness_twice=.
+replace illness_twice = 0 if illness<2
+replace illness_twice = 1 if illness>=2 & illness<999
+label var illness_twice "has the child been ill at least twice?1=yes"
+
+*==2 number of doctor visits for illness symptoms
+tab E2_16,m
+ 
+gen visit_dr=E2_16
+replace visit_dr=. if visit_dr>100
+replace visit_dr=0 if illness==0
+
+tab visit_dr,m //300+ missing values, need to be checked
 
 
-/////baby hemoglobin concentration——结局变量的处理
-codebook Baby_1 Baby_2 Baby_2_P Baby_3 T3_1
+gen visit_dr_yes=.
+replace visit_dr_yes=1 if visit_dr>0 & visit_dr<999
+replace visit_dr_yes=0 if visit_dr==0
 
-count if Baby_1 != 1 & baby_age < 42 & baby_age != . //187个小于42天未测血个案
+label var visit_dr_yes "did the child visit doctor? 1=yes"
 
-count if Baby_1 == 1 & baby_age < 42 & baby_age != . //23个小于42天但已测血个案
-codebook baby_age 
+*==3 anemia
 replace baby_age = 60 if baby_age == . //对7个不明原因缺失值进行处理
-
 gen baby_hgb = .
 order baby_hgb, before(baby_AGE)
 replace baby_hgb = Baby_3 if Baby_3 != . & baby_age >= 42 //共有586个大于42天已测血个案
+
 count if baby_age < 42 //共有210个小于42天个案，故测血率为80.49%
 codebook baby_hgb
 count if baby_hgb != . & type == 2 //共有549个符合条件；一看为母亲，大于42天，且已完成测血的个案
@@ -499,8 +426,8 @@ count if baby_hgb != . & type == 2 //共有549个符合条件；一看为母亲�
 //对海拔的处理
 codebook T3_1
 tab T3_1,m
-replace T3_1 = "353.57" in 759
-replace T3_1 = "357.18" in 19 //对两个海拔异常值进行处理
+replace T3_1 = "353.57" if Family_code==3010104 //replace T3_1 = "353.57" in 759
+replace T3_1 = "357.18" if Family_code==1010801 //  replace T3_1 = "357.18" in 19 //对两个海拔异常值进行处理
 
 gen altitude = real(T3_1) //将海拔转换为数值型变量
 codebook altitude
@@ -522,20 +449,6 @@ codebook baby_HGB
 count if baby_hgb != . & baby_HGB ==. //没有缺失值产生
 tab baby_HGB
 
-*histogram baby_HGB,percent by(county,total)
-
-*twoway lfit baby_HGB baby_age || scatter baby_HGB baby_age
-*twoway lfit baby_HGB baby_AGE || scatter baby_HGB baby_AGE
-
-*graph box baby_HGB, over(baby_AGE)
-
-*graph box baby_HGB,marker(1,mlabel(Family_code)) //有6个特异值
-
-sktest baby_HGB //对结局变量做正态性检验（偏态-峰态检验），发现服从正态分布
-swilk baby_HGB //对结局变量做正态性检验（Shapiro-Wilk检验），发现服从正态分布
-
-lv baby_HGB //结局变量中有6个轻度特异值，暂不予处理
-
 gen baby_Anemia = .
 order baby_Anemia, before(baby_AGE)
 replace baby_Anemia = 1 if ( baby_HGB < 90 & baby_AGE < 4 & baby_HGB != . )
@@ -544,128 +457,90 @@ replace baby_Anemia = 0 if ( baby_HGB >= 90 & baby_AGE < 4 & baby_HGB != . )
 replace baby_Anemia = 0 if ( baby_HGB >= 100 & baby_AGE >= 4 & baby_HGB != . )
 la values baby_Anemia choose
 codebook baby_Anemia 
-// 586例个案中，共有121例贫血，贫血检出率为20.65%
-*---
 
-drop if baby_Anemia==.
-tab baby_Anemia,m
-
-*========================== perinatal depression ==============================*
-recode G2_1 (0=3)(1=2)(2=1)(3=0)
-recode G2_2 (0=3)(1=2)(2=1)(3=0)
-
-egen perinatal_depression=rowtotal(G2_1-G2_10)
-
-tab perinatal_depression,m
-
-
-
-
-
-
-
-
-
-
+rename baby_Anemia anemia
+tab anemia,m
 
 
 
 *======================= some preliminary results  ===========================*
-* anemia and mental health
-
-
-global ses age_mom mom_hs_grad mom_village mom_migrant_b mom_migrant_a first_pregnancy miscarriage_yes dad_hs_grad family_asset
-global child child_male baby_AGE is_shunchan premature low_birth_weight
-global mh depression_yes anxiety_yes stress_yes any_yes
-
-*is_shunchan premature low_birth_weight
-est clear
-foreach var of varlist $mh{
-logit baby_Anemia `var' $ses $child, or 
-eststo `var'_full
-}
-
-outreg2 [depression_yes_full anxiety_yes_full stress_yes_full any_yes_full] using "ses_all.xls", ///
-ci eform excel dec(3) label title ("regression table") pde(4) replace alpha(0.001, 0.01, 0.05)
-
-
-
-
-* breastfeeding and mental health
-
-gen ever_bf=0
-replace ever_bf =1 if baby_Feeding==1
-tab ever_bf,m
-
-est clear
-foreach var of varlist $mh{
-logit ever_bf `var' $ses $child, or 
-eststo `var'_full
-}
-
-outreg2 [depression_yes_full anxiety_yes_full stress_yes_full any_yes_full] using "ses_all.xls", ///
-ci eform excel dec(3) label title ("regression table") pde(4) replace alpha(0.001, 0.01, 0.05)
-
-
-
-* exclusive breastfeeding and mental health
-
-gen exclusive_bf=0
-replace exclusive_bf =1 if baby_Feeding==2
-tab exclusive_bf,m
-
-est clear
-foreach var of varlist $mh{
-logit exclusive_bf `var' $ses $child, or 
-eststo `var'_full
-}
-
-outreg2 [depression_yes_full anxiety_yes_full stress_yes_full any_yes_full] using "ses_all.xls", ///
-ci eform excel dec(3) label title ("regression table") pde(4) replace alpha(0.001, 0.01, 0.05)
+* 1 
+global control child_male baby_AGE premature low_birth_weight age_mom mom_hs_grad dad_hs_grad family_asset
+global mh depression_mild anxiety_mild stress_mild any_mild depression_moderate anxiety_moderate stress_moderate any_moderate ed_depression_mild ed_depression_severe
+global feeding ever_bf exclusive_bf
+global child illness_twice visit_dr_yes anemia
 
 
 est clear
-logit baby_Anemia exclusive_bf  $ses $child, or 
-eststo exclusive_bf
+foreach y of varlist $feeding $child{
+	foreach var of varlist $mh{
+	logit `y' `var', or
+	eststo `y'_u
+	logit `y' `var' $control, or
+	eststo `y'_c
+	}
+	}
+// only illness and doctor visits are significant
 
-logit baby_Anemia ever_bf  $ses $child, or 
-eststo ever_bf
+* 2 onset of breastfeeding
 
-outreg2 [exclusive_bf ever_bf] using "ses_all.xls", ///
-ci eform excel dec(3) label title ("regression table") pde(4) replace alpha(0.001, 0.01, 0.05)
-
+gen btime=.
+replace btime=C1_2a/24 if C1_2==1
+replace btime=C1_2b if C1_2==2
 
 est clear
-logit baby_Anemia exclusive_bf $child, or 
-eststo exclusive_bf
 
-logit baby_Anemia ever_bf $child, or 
-eststo ever_bf
-
-outreg2 [exclusive_bf ever_bf] using "ses_all.xls", ///
-ci eform excel dec(3) label title ("regression table") pde(4) replace alpha(0.001, 0.01, 0.05)
-
-
-
-* some prevalence
+	foreach var of varlist $mh{
+	reg btime `var'
+	eststo btime_u
+	reg btime `var' $control
+	eststo btime_c
+	}
+//nothing significant
 
 
-*Table 1. 
-eststo t1: estpost tabstat $mh ever_bf exclusive_bf baby_Anemia, stat (mean sd) col(stat) 
-	esttab t1 using "table1_demographic.csv", replace unstack label cells(mean(fmt(2)) sd(par fmt(2))) 
+*3 whether have the formula from birth
+gen formula=.
+replace formula=1 if C1_14a==0
+replace formula=0 if C1_14a!=0	
+tab formula,m
+
+est clear
+	foreach var of varlist $mh{
+	logit formula `var',or
+	eststo formula
+	logit formula `var' $control,or
+	eststo formula
+	}
+//nothing significant
+
+*4 how often do you wash your baby's bottles?
+// too few variations
 
 
-* perinatal depression
-
-reg baby_Anemia perinatal_depression $ses $child
-
-reg ever_bf perinatal_depression $ses $child
-reg exclusive_bf perinatal_depression $ses $child
+*5 micronutrient supplements
 
 
 
-,
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
 
 

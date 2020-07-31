@@ -54,6 +54,14 @@ merge 1:1 Family_code using "/Users/jiangqi/Desktop/papers/34_2020_HF_mental_hea
 keep if _merge==3 
 drop _merge
 
+*wether the child has a secondary caregiver
+merge 1:1 Family_code using "/Users/jiangqi/Desktop/papers/37_2020_HF_mh_and_ecd/1_data/2_caregiver2.dta"
+drop if _merge==2
+
+gen sec_cg=.
+replace sec_cg=1 if _merge==3
+replace sec_cg=0 if _merge==1
+tab sec_cg,m
 
 ***********************
 *--Control Variables--*
@@ -471,16 +479,40 @@ global feeding ever_bf exclusive_bf
 global child illness_twice visit_dr_yes anemia
 
 
-est clear
+est clear //full sample 
 foreach y of varlist $feeding $child{
 	foreach var of varlist $mh{
 	logit `y' `var', or
 	eststo `y'_u
-	logit `y' `var' $control, or
+	logit `y' `var' $control sec_cg, or
 	eststo `y'_c
 	}
 	}
 // only illness and doctor visits are significant
+
+
+est clear //mothers without an assistant
+foreach y of varlist $feeding $child{
+	foreach var of varlist $mh{
+	logit `y' `var' if sec_cg==0, or
+	eststo `y'_u
+	logit `y' `var' $control if sec_cg==0, or
+	eststo `y'_c
+	}
+	}
+// only illness and doctor visits are significant
+
+est clear //mothers with an assistant
+foreach y of varlist $feeding $child{
+	foreach var of varlist $mh{
+	logit `y' `var' if sec_cg==1, or
+	eststo `y'_u
+	logit `y' `var' $control if sec_cg==1, or
+	eststo `y'_c
+	}
+	}
+// only illness and doctor visits are significant & mild depression is positively associated with ever breastfeeding.
+
 
 * 2 onset of breastfeeding
 
@@ -488,12 +520,33 @@ gen btime=.
 replace btime=C1_2a/24 if C1_2==1
 replace btime=C1_2b if C1_2==2
 
-est clear
+est clear //full sample
 
 	foreach var of varlist $mh{
 	reg btime `var'
 	eststo btime_u
-	reg btime `var' $control
+	reg btime `var' $control 
+	eststo btime_c
+	}
+//nothing significant
+
+
+est clear //mother without an assistant
+
+	foreach var of varlist $mh{
+	reg btime `var' if sec_cg==0
+	eststo btime_u
+	reg btime `var' $control if sec_cg==0
+	eststo btime_c
+	}
+//nothing significant
+
+est clear //mother with an assistant
+
+	foreach var of varlist $mh{
+	reg btime `var' if sec_cg==1
+	eststo btime_u
+	reg btime `var' $control if sec_cg==1
 	eststo btime_c
 	}
 //nothing significant
@@ -505,7 +558,7 @@ replace formula=1 if C1_14a==0
 replace formula=0 if C1_14a!=0	
 tab formula,m
 
-est clear
+est clear //full sample
 	foreach var of varlist $mh{
 	logit formula `var',or
 	eststo formula
@@ -514,29 +567,147 @@ est clear
 	}
 //nothing significant
 
+est clear //have no assistant
+	foreach var of varlist $mh{
+	logit formula `var' if sec_cg==0,or
+	eststo formula
+	logit formula `var' $control if sec_cg==0,or
+	eststo formula
+	}
+//nothing significant
+
+
+est clear //have asistants
+	foreach var of varlist $mh{
+	logit formula `var' if sec_cg==1,or
+	eststo formula
+	logit formula `var' $control if sec_cg==1,or
+	eststo formula
+	}
+//nothing significant
+ 
+
 *4 how often do you wash your baby's bottles?
 // too few variations
 
 
 *5 micronutrient supplements
+gen iron=.
+replace iron=1 if C3_1==1
+replace iron=0 if C3_1==2
 
 
+est clear //full sample
+	foreach var of varlist $mh{
+	logit iron `var',or
+	eststo iron
+	logit iron `var' $control,or
+	eststo iron
+	}
+//mild stress will have more iron intake
+
+est clear //have no assistant
+	foreach var of varlist $mh{
+	logit iron `var' if sec_cg==0,or
+	eststo iron
+	logit iron `var' $control if sec_cg==0,or
+	eststo iron
+	}
+//nothing significant
 
 
+est clear //have asistants
+	foreach var of varlist $mh{
+	logit iron `var' if sec_cg==1,or
+	eststo iron
+	logit iron `var' $control if sec_cg==1,or
+	eststo iron
+	}
+//moderate stress will have more iron intake
+
+*6 breastfeeding efficacy
+egen be=rowtotal(D1_1-D1_16)
+
+est clear //full sample
+
+	foreach var of varlist $mh{
+	reg be `var'
+	eststo be
+	reg be `var' $control ever_bf exclusive_bf
+	eststo be
+	}
+//depression mild has lower be
 
 
+est clear //mother without an assistant
+
+	foreach var of varlist $mh{
+	reg be `var' if sec_cg==0
+	eststo be
+	reg be `var' $control ever_bf exclusive_bf if sec_cg==0
+	eststo be
+	}
+//ed_depression mild
+
+est clear //mother with an assistant
+
+	foreach var of varlist $mh{
+	reg be `var' if sec_cg==1
+	eststo be
+	reg be `var' $control ever_bf exclusive_bf if sec_cg==1
+	eststo be
+	}
+//no significant
+
+*7 breastfeeding efficacy (breakdown)
+
+est clear //full sample 
+foreach y of varlist D1_1-D1_16{
+	foreach var of varlist $mh{
+	reg `y' `var' $control 
+	eststo `y'_c
+	}
+    } // lots of significant findings
 
 
+foreach var of varlist $mh{
+bootstrap r(ind_eff) r(dir_eff), reps(100): sgmediation anemia, iv(`var') mv(be) cv($control)
+}
+
+//nothing significant
+
+*8 handwashing times yesterday
+egen handwashing=rowtotal(E3_1__1-E3_1__14)
+est clear //full sample
+
+	foreach var of varlist $mh{
+	reg handwashing `var' $control
+	eststo handwashing
+	}
 
 
+	foreach var of varlist $mh{
+	reg illness_twice handwashing `var' c.handwashing#i.`var'  $control
+	eststo handwashing
+	} //not significant
+	
+	
+*9 handwashing when feed baby
+est clear //full sample
+
+	foreach var of varlist $mh{
+	reg E3_10 `var' $control
+	eststo handwashing
+	}
 
 
+*10 handwashing when cleaning your baby's bottom
+est clear //full sample
 
-
-
-
-
-
+	foreach var of varlist $mh{
+	reg E3_11 `var' $control
+	eststo handwashing
+	}
 
 
 

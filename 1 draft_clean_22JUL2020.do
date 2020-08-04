@@ -43,7 +43,8 @@ cd "/Users/jiangqi/Desktop/papers/37_2020_HF_mh_and_ecd/3_tables"
 use "$datadir/0_baseline_hf_mom_only.dta", clear
 
 *drop pregnant women and keep the newborns
-keep if type==2
+*keep if type==2
+
 
 *merge the child anemia data
 merge 1:1 Family_code using "/Users/jiangqi/Desktop/papers/34_2020_HF_mental_health_paper/1 codebook/Baseline V1/3.Data/Exam/BASE_EXAM_L2_1.dta"
@@ -62,6 +63,16 @@ gen sec_cg=.
 replace sec_cg=1 if _merge==3
 replace sec_cg=0 if _merge==1
 tab sec_cg,m
+
+
+*merge the covid data
+merge 1:1 Family_code using "/Users/jiangqi/Desktop/papers/37_2020_HF_mh_and_ecd/1_data/0_follow_up_hf_cleaned.dta"
+
+keep if _merge==3
+
+drop if O_13_eva==1 //premray caregivers changed
+
+drop if A2_eva==2 //unborn at the follow-up survey
 
 ***********************
 *--Control Variables--*
@@ -310,6 +321,7 @@ gen any_moderate = depression_moderate==1 | anxiety_moderate==1 | stress_moderat
 
 
 *==2.Edinburgh Postnatal Depression Scale
+*=2.1 baseline
 egen perinatal_depression=rowtotal(G2_1-G2_10)
 tab perinatal_depression,m
 
@@ -322,6 +334,33 @@ gen ed_depression_severe=.
 replace ed_depression_severe=1 if perinatal_depression>13 & perinatal_depression<999
 replace ed_depression_severe=0 if perinatal_depression<=13
 tab ed_depression_severe,m //5.85%
+
+*=2.2 endline
+egen perinatal_depression_eva=rowtotal(G2_1_eva-G2_10_eva)
+tab perinatal_depression_eva,m
+
+gen ed_depression_mild_eva=.
+replace ed_depression_mild_eva=1 if perinatal_depression_eva>=10 & perinatal_depression_eva<999
+replace ed_depression_mild_eva=0 if perinatal_depression_eva<10
+tab ed_depression_mild_eva,m //15.77%
+
+gen ed_depression_severe_eva=.
+replace ed_depression_severe_eva=1 if perinatal_depression_eva>13 & perinatal_depression_eva<999
+replace ed_depression_severe_eva=0 if perinatal_depression_eva<=13
+tab ed_depression_severe_eva,m //5.85%
+
+*2.3 depression type
+gen depression_type=.
+replace depression_type=1 if ed_depression_mild==1 & ed_depression_mild_eva==1 //n=37, 3.31%
+replace depression_type=2 if ed_depression_mild==0 & ed_depression_mild_eva==0 //n=890, 82.92%
+replace depression_type=3 if ed_depression_mild==1 & ed_depression_mild_eva==0 //n=145, 12.97%
+replace depression_type=4 if ed_depression_mild==0 & ed_depression_mild_eva==1 //n=46, 4.11%
+
+tab depression_type,m
+bysort type: tab depression_type //10 pregnant (3.38%) women and 27 new mothers (3.14%) at baseline for depression type 1
+
+label define depression 1 "persistent depression" 2 "never depression" 3 "depression disappearing" 4 "depression occuring"
+label value depression_type depression
 
 ************************
 *-- Feeding Practice --*
@@ -421,6 +460,7 @@ replace visit_dr_yes=0 if visit_dr==0
 
 label var visit_dr_yes "did the child visit doctor? 1=yes"
 
+/*
 *==3 anemia
 replace baby_age = 60 if baby_age == . //对7个不明原因缺失值进行处理
 gen baby_hgb = .
@@ -468,7 +508,7 @@ codebook baby_Anemia
 
 rename baby_Anemia anemia
 tab anemia,m
-
+*/
 
 
 *======================= some preliminary results  ===========================*
@@ -476,7 +516,7 @@ tab anemia,m
 global control child_male baby_AGE premature low_birth_weight age_mom mom_hs_grad dad_hs_grad family_asset
 global mh depression_mild anxiety_mild stress_mild any_mild depression_moderate anxiety_moderate stress_moderate any_moderate ed_depression_mild ed_depression_severe
 global feeding ever_bf exclusive_bf
-global child illness_twice visit_dr_yes anemia
+global child illness_twice visit_dr_yes 
 
 
 est clear //full sample 
@@ -708,6 +748,87 @@ est clear //full sample
 	reg E3_11 `var' $control
 	eststo handwashing
 	}
+
+*11 how many times of breasfeeding yesterday
+replace C1_9=. if C1_9==999
+
+est clear //full sample
+
+	foreach var of varlist $mh{
+	reg C1_9 `var' $control if type==2
+	eststo C1_9
+	}
+	
+	
+	
+*******************************************************************************
+********************** two waves of analysis **********************************
+*******************************************************************************
+
+
+*==1. duration of the breastfeeding (how to do it?)
+preserve
+drop if type==1
+gen bf_persistent =0
+replace bf_persistent=1 if C1_8==1 & D1_8_eva==1
+tab bf_persistent,m
+
+
+est clear 
+
+	foreach var of varlist $mh{
+	reg bf_persistent `var' $control
+	eststo bf_persistent
+	}
+
+
+
+
+//not significant - could because of the lack of variations
+
+
+reg  bf_persistent i.depression_type $control
+
+
+restore
+
+
+*==2. was the child fed colostrum?
+
+est clear 
+
+	foreach var of varlist $mh{
+	reg C1_4 `var' $control if type==2
+	eststo colostrum
+	}
+//not significant
+
+
+*==3 times of washing hands
+
+egen washinghands_eva=rowtotal(C3_1__1_eva-C3_1__16_eva)
+
+tab washinghands_eva,m
+
+
+reg  washinghands_eva i.depression_type $control
+
+
+*==4 times of breastfeeding
+replace D1_9_eva=. if D1_9_eva==999
+reg  D1_9_eva i.depression_type $control // not significant
+
+
+
+*==4 how freguence do you wash your hands when you feed your baby?
+
+reg  C3_2_eva i.depression_type $control 
+
+
+
+
+
+
 
 
 

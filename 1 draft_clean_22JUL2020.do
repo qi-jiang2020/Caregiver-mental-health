@@ -43,36 +43,7 @@ cd "/Users/jiangqi/Desktop/papers/37_2020_HF_mh_and_ecd/3_tables"
 use "$datadir/0_baseline_hf_mom_only.dta", clear
 
 *drop pregnant women and keep the newborns
-*keep if type==2
-
-
-*merge the child anemia data
-merge 1:1 Family_code using "/Users/jiangqi/Desktop/papers/34_2020_HF_mental_health_paper/1 codebook/Baseline V1/3.Data/Exam/BASE_EXAM_L2_1.dta"
-keep if _merge==3 //444 not merged (401 from using data, 43 from master data), 837 merged
-drop _merge
-
-merge 1:1 Family_code using "/Users/jiangqi/Desktop/papers/34_2020_HF_mental_health_paper/1 codebook/Baseline V1/3.Data/Exam/BASE_EXAM_HEAD_1.dta"
-keep if _merge==3 
-drop _merge
-
-*wether the child has a secondary caregiver
-merge 1:1 Family_code using "/Users/jiangqi/Desktop/papers/37_2020_HF_mh_and_ecd/1_data/2_caregiver2.dta"
-drop if _merge==2
-
-gen sec_cg=.
-replace sec_cg=1 if _merge==3
-replace sec_cg=0 if _merge==1
-tab sec_cg,m
-
-
-*merge the covid data
-merge 1:1 Family_code using "/Users/jiangqi/Desktop/papers/37_2020_HF_mh_and_ecd/1_data/0_follow_up_hf_cleaned.dta"
-
-keep if _merge==3
-
-drop if O_13_eva==1 //premray caregivers changed
-
-drop if A2_eva==2 //unborn at the follow-up survey
+keep if type==2
 
 ***********************
 *--Control Variables--*
@@ -309,7 +280,7 @@ tab depression_moderate,m
 
 gen anxiety_moderate=.
 replace anxiety_moderate=1 if anxiety_score>9 & anxiety_score<999
-replace anxiety_moderate=0 if anxiety_score<=0
+replace anxiety_moderate=0 if anxiety_score<=9
 tab anxiety_moderate,m
 
 gen stress_moderate=.
@@ -319,48 +290,6 @@ tab stress_moderate,m
 
 gen any_moderate = depression_moderate==1 | anxiety_moderate==1 | stress_moderate==1
 
-
-*==2.Edinburgh Postnatal Depression Scale
-*=2.1 baseline
-egen perinatal_depression=rowtotal(G2_1-G2_10)
-tab perinatal_depression,m
-
-gen ed_depression_mild=.
-replace ed_depression_mild=1 if perinatal_depression>=10 & perinatal_depression<999
-replace ed_depression_mild=0 if perinatal_depression<10
-tab ed_depression_mild,m //15.77%
-
-gen ed_depression_severe=.
-replace ed_depression_severe=1 if perinatal_depression>13 & perinatal_depression<999
-replace ed_depression_severe=0 if perinatal_depression<=13
-tab ed_depression_severe,m //5.85%
-
-*=2.2 endline
-egen perinatal_depression_eva=rowtotal(G2_1_eva-G2_10_eva)
-tab perinatal_depression_eva,m
-
-gen ed_depression_mild_eva=.
-replace ed_depression_mild_eva=1 if perinatal_depression_eva>=10 & perinatal_depression_eva<999
-replace ed_depression_mild_eva=0 if perinatal_depression_eva<10
-tab ed_depression_mild_eva,m //15.77%
-
-gen ed_depression_severe_eva=.
-replace ed_depression_severe_eva=1 if perinatal_depression_eva>13 & perinatal_depression_eva<999
-replace ed_depression_severe_eva=0 if perinatal_depression_eva<=13
-tab ed_depression_severe_eva,m //5.85%
-
-*2.3 depression type
-gen depression_type=.
-replace depression_type=1 if ed_depression_mild==1 & ed_depression_mild_eva==1 //n=37, 3.31%
-replace depression_type=2 if ed_depression_mild==0 & ed_depression_mild_eva==0 //n=890, 82.92%
-replace depression_type=3 if ed_depression_mild==1 & ed_depression_mild_eva==0 //n=145, 12.97%
-replace depression_type=4 if ed_depression_mild==0 & ed_depression_mild_eva==1 //n=46, 4.11%
-
-tab depression_type,m
-bysort type: tab depression_type //10 pregnant (3.38%) women and 27 new mothers (3.14%) at baseline for depression type 1
-
-label define depression 1 "persistent depression" 2 "never depression" 3 "depression disappearing" 4 "depression occuring"
-label value depression_type depression
 
 ************************
 *-- Feeding Practice --*
@@ -414,109 +343,189 @@ gen exclusive_bf=0
 replace exclusive_bf =1 if baby_Feeding==2
 tab exclusive_bf,m
 
-*=3.3 
-**********************
-*-- Child outcomes --*
-**********************
 
-*==1 number of illness
-
-foreach num of numlist 1(1)15 {
-	gen ill_`num'=0
-	replace ill_`num' =1 if E2_`num' == 1
-	}
-
-egen illness=rowtotal(ill_1-ill_15)
-tab illness,m
-
-label var illness "number of illness"
-
-drop ill_1-ill_15
-
-gen illness_yes = .
-replace illness_yes = 0 if illness ==0
-replace illness_yes = 1 if illness >0 & illness<999
-
-label var illness "does the child have illness? 1=yes"
-
-gen illness_twice=.
-replace illness_twice = 0 if illness<2
-replace illness_twice = 1 if illness>=2 & illness<999
-label var illness_twice "has the child been ill at least twice?1=yes"
-
-*==2 number of doctor visits for illness symptoms
-tab E2_16,m
- 
-gen visit_dr=E2_16
-replace visit_dr=. if visit_dr>100
-replace visit_dr=0 if illness==0
-
-tab visit_dr,m //300+ missing values, need to be checked
+*************************
+*-- Hygiene practices --*
+*************************
 
 
-gen visit_dr_yes=.
-replace visit_dr_yes=1 if visit_dr>0 & visit_dr<999
-replace visit_dr_yes=0 if visit_dr==0
+*==1 handwashing times yesterday
+egen handwashing=rowtotal(E3_1__1-E3_1__14)
 
-label var visit_dr_yes "did the child visit doctor? 1=yes"
 
-/*
-*==3 anemia
-replace baby_age = 60 if baby_age == . //对7个不明原因缺失值进行处理
-gen baby_hgb = .
-order baby_hgb, before(baby_AGE)
-replace baby_hgb = Baby_3 if Baby_3 != . & baby_age >= 42 //共有586个大于42天已测血个案
+*==2 handwashing when feed baby
 
-count if baby_age < 42 //共有210个小于42天个案，故测血率为80.49%
-codebook baby_hgb
-count if baby_hgb != . & type == 2 //共有549个符合条件；一看为母亲，大于42天，且已完成测血的个案
+rename E3_10 hw_feed
 
-//对海拔的处理
-codebook T3_1
-tab T3_1,m
-replace T3_1 = "353.57" if Family_code==3010104 //replace T3_1 = "353.57" in 759
-replace T3_1 = "357.18" if Family_code==1010801 //  replace T3_1 = "357.18" in 19 //对两个海拔异常值进行处理
 
-gen altitude = real(T3_1) //将海拔转换为数值型变量
-codebook altitude
-tab altitude,m
-order altitude , after(T3_1)
-replace altitude = 409 if altitude  == 4409
-replace altitude = 500 if altitude  == 5
-replace altitude = . if altitude  == 0
-replace altitude = . if altitude  == 999
-*br if altitude <  100
-replace altitude = 366.599998 in 69
-count if baby_hgb ==1 & altitude == . //没有空值，也就是说测了血的个案都填了海拔
+*==3 handwashing when cleaning your baby's bottom
 
-//生成baby_HGB，即标准化后的血红蛋白浓度
-gen baby_HGB = baby_hgb/(1.04^((altitude-72.26)/1000)) 
-format baby_HGB %9.2f
-order baby_HGB, before(baby_AGE)
-codebook baby_HGB
-count if baby_hgb != . & baby_HGB ==. //没有缺失值产生
-tab baby_HGB
+rename E3_11 hw_clean
 
-gen baby_Anemia = .
-order baby_Anemia, before(baby_AGE)
-replace baby_Anemia = 1 if ( baby_HGB < 90 & baby_AGE < 4 & baby_HGB != . )
-replace baby_Anemia = 1 if ( baby_HGB < 100 & baby_AGE >= 4 & baby_HGB != . )
-replace baby_Anemia = 0 if ( baby_HGB >= 90 & baby_AGE < 4 & baby_HGB != . )
-replace baby_Anemia = 0 if ( baby_HGB >= 100 & baby_AGE >= 4 & baby_HGB != . )
-la values baby_Anemia choose
-codebook baby_Anemia 
 
-rename baby_Anemia anemia
-tab anemia,m
-*/
+******************************
+*-- breastfeeding attitude --*
+******************************
+
+recode D3_1 (1=5)(2=4)(3=3)(4=2)(5=1)
+recode D3_2 (1=5)(2=4)(3=3)(4=2)(5=1)
+recode D3_4 (1=5)(2=4)(3=3)(4=2)(5=1)
+recode D3_6 (1=5)(2=4)(3=3)(4=2)(5=1)
+recode D3_8 (1=5)(2=4)(3=3)(4=2)(5=1)
+recode D3_10 (1=5)(2=4)(3=3)(4=2)(5=1)
+recode D3_11 (1=5)(2=4)(3=3)(4=2)(5=1)
+recode D3_14 (1=5)(2=4)(3=3)(4=2)(5=1)
+recode D3_17 (1=5)(2=4)(3=3)(4=2)(5=1)
+
+
+tab D3_1,m
+ foreach num of numlist 1(1)18 {
+  replace D3_`num' =. if D3_`num' ==.a
+ }
+ gen bfatt = .
+ replace bfatt = D3_1 + D3_2 + D3_3 + D3_4 + D3_5 + D3_6 + D3_7 + D3_8 + D3_9 + D3_10 + D3_11 + D3_12 + D3_13 + D3_14 + D3_15 + D3_16 + D3_17 + D3_18
+ tab bfatt
+ codebook bfatt
+
+******************************
+*-- breastfeeding efficacy --*
+******************************
+
+egen be=rowtotal(D1_1-D1_16)
+
+******************************
+*-- breastfeeding knowlege --*
+******************************
+gen bk_1=0
+replace bk_1=1 if D6_1==0
+
+gen bk_2=0
+replace bk_2=1 if D6_2==0
+
+gen bk_3=0
+replace bk_3=1 if D6_3==0
+
+gen bk_4=0
+replace bk_4=1 if D6_4==1
+
+gen bk_5=0
+replace bk_5=1 if D6_5==3
+
+gen bk_6=0
+replace bk_6=1 if D6_6==3
+
+gen bk_7=0
+replace bk_7=1 if D6_7==4
+
+gen bk_8=0
+replace bk_8=1 if D6_8==2
+
+gen bk_9=0
+replace bk_9=1 if D6_9==1
+
+gen bk_10=0
+replace bk_10=1 if D6_10==3
+
+gen bk_11=0
+replace bk_11=1 if D6_11__2==1
+
+gen bk_12=0
+replace bk_12=1 if D6_12__1==1
+
+egen bf_knowledge_5=rowtotal(bk_1-bk_5)
+
+egen bf_knowledge_7=rowtotal(bk_1-bk_7)
+
+******************************
+*----- hygiene knowlege -----*
+******************************
+
+gen hygiene_knowledge = bk_12
+
 
 
 *======================= some preliminary results  ===========================*
-* 1 
+
 global control child_male baby_AGE premature low_birth_weight age_mom mom_hs_grad dad_hs_grad family_asset
-global mh depression_mild anxiety_mild stress_mild any_mild depression_moderate anxiety_moderate stress_moderate any_moderate ed_depression_mild ed_depression_severe
-global feeding ever_bf exclusive_bf
-global child illness_twice visit_dr_yes 
+global mh depression_mild anxiety_mild stress_mild any_mild depression_moderate anxiety_moderate stress_moderate any_moderate
+
+global feeding_practice ever_bf exclusive_bf
+global hygiene_practice handwashing hw_feed hw_clean
+
+global bf_knowledge bf_knowledge_7
+global hy_knowledge bk_12
+
+global bf_att bfatt
+global bf_efficacy be
+
+*==1. table 1 demographic info
+eststo t1: estpost tabstat $control, stat (mean sd) col(stat) 
+	esttab t1 using "table1_demographic.csv", replace unstack label cells(mean(fmt(2)) sd(par fmt(2))) 
+
+
+*==2. table 2 prevalence of mental health issues 
+eststo t1: estpost tabstat $mh, stat (mean sd) col(stat) 
+	esttab t1 using "table1_demographic.csv", replace unstack label cells(mean(fmt(2)) sd(par fmt(2))) 
+,
+*==3. table 3 childcare
+eststo t1: estpost tabstat $feeding_practice $hygiene_practice $bf_knowledge $hy_knowledge $bf_att $bf_efficacy, stat (mean sd) col(stat) 
+	esttab t1 using "table1_demographic.csv", replace unstack label cells(mean(fmt(2)) sd(par fmt(2))) 
+
+*==4. regression tables
+
+
+eststo clear 
+foreach y of varlist $feeding_practice $hygiene_practice $bf_knowledge $hy_knowledge $bf_att $bf_efficacy{
+	eststo `y': reg `y' depression_mild $control $feeding_practice
+	}
+esttab ever_bf exclusive_bf handwashing hw_feed hw_clean bf_knowledge_7 bk_12 bfatt be using "own_all.csv",  ///
+ar2 se(3) b(3) replace margin mtitles
+
+
+eststo clear 
+foreach y of varlist $feeding_practice $hygiene_practice $bf_knowledge $hy_knowledge $bf_att $bf_efficacy{
+	eststo `y': reg `y' anxiety_mild $control 
+	}
+esttab ever_bf exclusive_bf handwashing hw_feed hw_clean bf_knowledge_7 bk_12 bfatt be using "own_all.csv",  ///
+ar2 se(3) b(3) replace margin mtitles 
+
+ 
+eststo clear 
+foreach y of varlist $feeding_practice $hygiene_practice $bf_knowledge $hy_knowledge $bf_att $bf_efficacy{
+	eststo `y': reg `y' stress_mild $control
+	}
+esttab ever_bf exclusive_bf handwashing hw_feed hw_clean bf_knowledge_7 bk_12 bfatt be using "own_all.csv",  ///
+ar2 se(3) b(3) replace margin mtitles 
+
+
+eststo clear 
+foreach y of varlist $feeding_practice $hygiene_practice $bf_knowledge $hy_knowledge $bf_att $bf_efficacy{
+	eststo `y': reg `y' any_mild $control
+	}
+esttab ever_bf exclusive_bf handwashing hw_feed hw_clean bf_knowledge_7 bk_12 bfatt be using "own_all.csv",  ///
+ar2 se(3) b(3) replace margin mtitles
+
+
+eststo clear 
+foreach y of varlist depression_mild anxiety_mild stress_mild any_mild{
+	eststo `y': reg be `y' $control $feeding_practice
+	}
+esttab depression_mild anxiety_mild stress_mild any_mild using "own_all.csv",  ///
+ar2 se(3) b(3) replace margin mtitles
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 est clear //full sample 
@@ -759,71 +768,10 @@ est clear //full sample
 	eststo C1_9
 	}
 	
+*** tables
+
 	
 	
-*******************************************************************************
-********************** two waves of analysis **********************************
-*******************************************************************************
-
-
-*==1. duration of the breastfeeding (how to do it?)
-preserve
-drop if type==1
-gen bf_persistent =0
-replace bf_persistent=1 if C1_8==1 & D1_8_eva==1
-tab bf_persistent,m
-
-
-est clear 
-
-	foreach var of varlist $mh{
-	reg bf_persistent `var' $control
-	eststo bf_persistent
-	}
-
-
-
-
-//not significant - could because of the lack of variations
-
-
-reg  bf_persistent i.depression_type $control
-
-
-restore
-
-
-*==2. was the child fed colostrum?
-
-est clear 
-
-	foreach var of varlist $mh{
-	reg C1_4 `var' $control if type==2
-	eststo colostrum
-	}
-//not significant
-
-
-*==3 times of washing hands
-
-egen washinghands_eva=rowtotal(C3_1__1_eva-C3_1__16_eva)
-
-tab washinghands_eva,m
-
-
-reg  washinghands_eva i.depression_type $control
-
-
-*==4 times of breastfeeding
-replace D1_9_eva=. if D1_9_eva==999
-reg  D1_9_eva i.depression_type $control // not significant
-
-
-
-*==4 how freguence do you wash your hands when you feed your baby?
-
-reg  C3_2_eva i.depression_type $control 
-
 
 
 

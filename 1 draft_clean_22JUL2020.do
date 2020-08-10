@@ -466,13 +466,12 @@ eststo t1: estpost tabstat $control, stat (mean sd) col(stat)
 *==2. table 2 prevalence of mental health issues 
 eststo t1: estpost tabstat $mh, stat (mean sd) col(stat) 
 	esttab t1 using "table1_demographic.csv", replace unstack label cells(mean(fmt(2)) sd(par fmt(2))) 
-,
+
 *==3. table 3 childcare
 eststo t1: estpost tabstat $feeding_practice $hygiene_practice $bf_knowledge $hy_knowledge $bf_att $bf_efficacy, stat (mean sd) col(stat) 
 	esttab t1 using "table1_demographic.csv", replace unstack label cells(mean(fmt(2)) sd(par fmt(2))) 
 
-*==4. regression tables
-
+*==4. regression for breastfeeding practices
 
 eststo clear 
 foreach y of varlist $feeding_practice $hygiene_practice $bf_knowledge $hy_knowledge $bf_att $bf_efficacy{
@@ -497,6 +496,7 @@ foreach y of varlist $feeding_practice $hygiene_practice $bf_knowledge $hy_knowl
 esttab ever_bf exclusive_bf handwashing hw_feed hw_clean bf_knowledge_7 bk_12 bfatt be using "own_all.csv",  ///
 ar2 se(3) b(3) replace margin mtitles 
 
+**control practices for believes
 
 eststo clear 
 foreach y of varlist $feeding_practice $hygiene_practice $bf_knowledge $hy_knowledge $bf_att $bf_efficacy{
@@ -514,6 +514,7 @@ esttab depression_mild anxiety_mild stress_mild any_mild using "own_all.csv",  /
 ar2 se(3) b(3) replace margin mtitles
 
 
+*==5. regression for breastfeeding practices
 
 
 
